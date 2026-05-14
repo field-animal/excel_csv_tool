@@ -90,7 +90,8 @@ class ExcelCSVTool:
                 self.log(f"\n[{i} / {total_files}] 처리 중: {os.path.basename(f)}")
                 
                 # Pandas 작업 실행 (이 부분이 돌아가는 동안에도 화면은 안 멈춤)
-                df = pd.read_excel(f)
+                # df = pd.read_excel(f) # pandas가 지능형 숫자 변환. 00123 -> 123
+                df = pd.read_excel(f, dtype=str) # pandas가 지능형 숫자 변환 안함. 000123 -> "000123"
                 
                 out_name = os.path.splitext(f)[0] + f"_{selected_enc}.csv"
                 df.to_csv(out_name, index=False, encoding=selected_enc)
