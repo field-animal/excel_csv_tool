@@ -7,81 +7,117 @@ import shutil
 class ExcelCSVTool:
     def __init__(self, root):
         self.root = root
-        self.root.title("Excel & CSV 통합 관리 도구")
-        self.root.geometry("500x520")
+        self.root.title("Excel/CSV Advanced Tool (K1PS)")
+        self.root.geometry("550x620")
         
-        # 1. 엑셀 -> CSV 변환 섹션
-        frame1 = ttk.LabelFrame(root, text="1. 엑셀 파일을 CSV로 변환", padding=10)
+        # 스타일 설정
+        style = ttk.Style()
+        style.configure("TButton", padding=5)
+        
+        # --- 1. 엑셀 -> CSV 변환 섹션 ---
+        frame1 = ttk.LabelFrame(root, text="1. 엑셀 -> CSV 변환 (복수 선택 가능)", padding=10)
         frame1.pack(fill="x", padx=10, pady=5)
-        ttk.Button(frame1, text="엑셀 파일 선택 (복수 가능)", command=self.convert_excel).pack(fill="x")
-
-        # 2. CSV 병합 섹션
-        frame2 = ttk.LabelFrame(root, text="2. CSV 파일 병합", padding=10)
+        
+        # 인코딩 선택 레이아웃
+        enc_layout = ttk.Frame(frame1)
+        enc_layout.pack(fill="x", pady=5)
+        ttk.Label(enc_layout, text="변환 인코딩 설정:").pack(side="left")
+        
+        # 3가지 인코딩 옵션 추가
+        self.enc_option = ttk.Combobox(enc_layout, 
+                                       values=["utf-8-sig (엑셀 호환/권장)", "utf-8 (표준)", "cp949 (오래된 한글)"], 
+                                       state="readonly", width=25)
+        self.enc_option.current(0)
+        self.enc_option.pack(side="left", padx=5)
+        
+        ttk.Button(frame1, text="엑셀 파일들을 선택하여 변환", command=self.convert_excel).pack(fill="x", pady=5)
+        
+        # --- 2. CSV 파일 병합 섹션 ---
+        frame2 = ttk.LabelFrame(root, text="2. CSV 파일 병합 (복수 선택 가능)", padding=10)
         frame2.pack(fill="both", expand=True, padx=10, pady=5)
-
-        # 병합 옵션 선택
+        
+        ttk.Label(frame2, text="병합 방식을 선택하세요:").pack(anchor="w", pady=2)
+        
         self.merge_mode = tk.StringVar(value="fast")
-        ttk.Radiobutton(frame2, text="빠르게 병합 (copy 명령어 방식, 헤더 제외 불가)", 
+        ttk.Radiobutton(frame2, text="빠른 병합 (단순 이어붙이기 / 헤더 포함)", 
                         variable=self.merge_mode, value="fast").pack(anchor="w")
         ttk.Radiobutton(frame2, text="고급 병합 (인코딩 교정 및 헤더 제어)", 
                         variable=self.merge_mode, value="advanced").pack(anchor="w")
-
-        # 고급 병합 전용 세부 옵션
+        
         self.remove_header = tk.BooleanVar(value=True)
-        self.header_check = ttk.Checkbutton(frame2, text="첫 줄(헤더) 제거 (첫 파일만 헤더 유지)", 
+        self.header_check = ttk.Checkbutton(frame2, text="첫 줄(헤더) 중복 제거 (첫 파일만 헤더 유지)", 
                                            variable=self.remove_header)
-        self.header_check.pack(anchor="w", padx=25, pady=5)
-
-        ttk.Button(frame2, text="CSV 파일 선택 및 병합 실행", command=self.merge_csv).pack(fill="x", pady=10)
-
+        self.header_check.pack(anchor="w", padx=20, pady=5)
+        
+        ttk.Button(frame2, text="CSV 파일들을 선택하여 병합", command=self.merge_csv).pack(fill="x", pady=10)
+        
         # 로그 출력창
-        self.log_text = tk.Text(root, height=8, state="disabled", bg="#f8f9fa")
+        self.log_text = tk.Text(root, height=12, state="disabled", bg="#f8f9fa", font=("Consolas", 9))
         self.log_text.pack(fill="both", padx=10, pady=5)
 
-    def log(self, msg):
+    def log(self, message):
         self.log_text.config(state="normal")
-        self.log_text.insert("end", msg + "\n")
+        self.log_text.insert("end", message + "\n")
         self.log_text.see("end")
         self.log_text.config(state="disabled")
 
     def convert_excel(self):
-        files = filedialog.askopenfilenames(filetypes=[("Excel Files", "*.xlsx *.xls")])
+        files = filedialog.askopenfilenames(title="변환할 엑셀 파일 선택", filetypes=[("Excel files", "*.xlsx *.xls")])
+        if not files: return
+        
+        # 인코딩 매핑
+        enc_map = {
+            "utf-8-sig (엑셀 호환/권장)": "utf-8-sig",
+            "utf-8 (표준)": "utf-8",
+            "cp949 (오래된 한글)": "cp949"
+        }
+        selected_enc = enc_map.get(self.enc_option.get(), "utf-8-sig")
+
         for f in files:
             try:
                 df = pd.read_excel(f)
-                out = os.path.splitext(f)[0] + ".csv"
-                df.to_csv(out, index=False, encoding='utf-8-sig')
-                self.log(f"변환 성공: {os.path.basename(out)}")
-            except Exception as e: self.log(f"오류: {os.path.basename(f)} - {e}")
-        messagebox.showinfo("완료", "엑셀 변환 완료")
+                out_name = os.path.splitext(f)[0] + f"_{selected_enc}.csv"
+                df.to_csv(out_name, index=False, encoding=selected_enc)
+                self.log(f"[완료] {os.path.basename(out_name)}")
+            except Exception as e:
+                self.log(f"[오류] {os.path.basename(f)}: {e}")
+        messagebox.showinfo("알림", "엑셀 변환 작업이 완료되었습니다.")
 
     def merge_csv(self):
-        files = filedialog.askopenfilenames(filetypes=[("CSV Files", "*.csv")])
+        files = filedialog.askopenfilenames(title="병합할 CSV 파일 선택", filetypes=[("CSV files", "*.csv")])
         if not files: return
-        save_path = filedialog.asksaveasfilename(defaultextension=".csv")
+        
+        save_path = filedialog.asksaveasfilename(defaultextension=".csv", title="저장할 파일 이름 입력")
         if not save_path: return
-
+        
         try:
             if self.merge_mode.get() == "fast":
-                # 바이너리 복사 방식 (copy /b와 동일)
                 with open(save_path, 'wb') as outfile:
                     for f in files:
                         with open(f, 'rb') as infile:
                             shutil.copyfileobj(infile, outfile)
-                self.log(f"빠른 병합 완료: {os.path.basename(save_path)}")
             else:
-                # 고급 병합 방식 (Pandas 활용)
+                # 고급 병합 시 한글 깨짐 방지를 위해 결과물은 항상 utf-8-sig로 저장
                 with open(save_path, 'w', encoding='utf-8-sig', newline='') as f_out:
                     for i, f in enumerate(files):
-                        df = pd.read_csv(f)
-                        # 첫 파일이 아니고 헤더 제거 옵션이 켜져 있으면 헤더 없이 기록
-                        include_header = not (self.remove_header.get() and i > 0)
-                        df.to_csv(f_out, index=False, header=include_header, mode='a')
-                self.log(f"고급 병합 완료: {os.path.basename(save_path)}")
-            messagebox.showinfo("완료", "병합이 완료되었습니다.")
-        except Exception as e: self.log(f"병합 중 오류: {e}")
+                        try:
+                            # 다양한 인코딩 대응을 위해 시도
+                            try:
+                                df = pd.read_csv(f, encoding='utf-8-sig')
+                            except:
+                                df = pd.read_csv(f, encoding='cp949')
+                            
+                            include_header = not (self.remove_header.get() and i > 0)
+                            df.to_csv(f_out, index=False, header=include_header, mode='a')
+                        except Exception as e:
+                            self.log(f"[경고] {os.path.basename(f)} 처리 실패: {e}")
+            
+            self.log(f"[성공] 병합 완료: {os.path.basename(save_path)}")
+            messagebox.showinfo("알림", "병합 작업이 완료되었습니다.")
+        except Exception as e:
+            self.log(f"[오류] 병합 중 중대 오류: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
-    ExcelCSVTool(root)
+    app = ExcelCSVTool(root)
     root.mainloop()
