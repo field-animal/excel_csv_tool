@@ -3,6 +3,7 @@ from tkinter import filedialog, messagebox, ttk
 import pandas as pd
 import os
 import shutil
+import threading  # 멀티스레딩을 위한 라이브러리 추가
 
 class ExcelCSVTool:
     def __init__(self, root):
@@ -65,7 +66,18 @@ class ExcelCSVTool:
         files = filedialog.askopenfilenames(title="변환할 엑셀 파일 선택", filetypes=[("Excel files", "*.xlsx *.xls")])
         if not files: return
         
-        # 인코딩 매핑
+        # 버튼을 비활성화하여 중복 실행 방지
+        # self.convert_btn.config(state="disabled") 
+        
+        # 별도의 스레드에서 실제 변환 작업 실행
+        thread = threading.Thread(target=self._run_conversion, args=(files,))
+        thread.daemon = True # 프로그램 종료 시 스레드도 함께 종료
+        thread.start()
+
+    def _run_conversion(self, files):
+        total_files = len(files)
+        self.log(f"--- 변환 시작 (총 {total_files}개 파일) ---")
+
         enc_map = {
             "utf-8-sig (엑셀 호환/권장)": "utf-8-sig",
             "utf-8 (표준)": "utf-8",
@@ -73,15 +85,23 @@ class ExcelCSVTool:
         }
         selected_enc = enc_map.get(self.enc_option.get(), "utf-8-sig")
 
-        for f in files:
+        for i, f in enumerate(files, 1):
             try:
+                self.log(f"\n[{i} / {total_files}] 처리 중: {os.path.basename(f)}")
+                
+                # Pandas 작업 실행 (이 부분이 돌아가는 동안에도 화면은 안 멈춤)
                 df = pd.read_excel(f)
+                
                 out_name = os.path.splitext(f)[0] + f"_{selected_enc}.csv"
                 df.to_csv(out_name, index=False, encoding=selected_enc)
-                self.log(f"[완료] {os.path.basename(out_name)}")
+                
+                self.log(f" > 완료: {os.path.basename(out_name)}")
             except Exception as e:
-                self.log(f"[오류] {os.path.basename(f)}: {e}")
-        messagebox.showinfo("알림", "엑셀 변환 작업이 완료되었습니다.")
+                self.log(f" > [오류]: {e}")
+        
+        self.log("\n--- 모든 작업 완료 ---")
+        messagebox.showinfo("알림", "작업이 끝났습니다.")
+        # self.convert_btn.config(state="normal")
 
     def merge_csv(self):
         files = filedialog.askopenfilenames(title="병합할 CSV 파일 선택", filetypes=[("CSV files", "*.csv")])
