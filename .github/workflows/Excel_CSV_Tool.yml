@@ -1,29 +1,30 @@
 name: Build Windows EXE
 
-on: [push] # 코드를 올리면 자동으로 빌드 시작
+on: [push] 
 
 jobs:
   build:
-    runs-on: windows-latest # 윈도우 환경에서 빌드
+    runs-on: windows-latest 
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4 # 최신 버전 권장
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5 # 최신 버전 권장
       with:
         python-version: '3.10'
 
     - name: Install dependencies
       run: |
-        pip install pandas openpyxl pyinstaller # 필요한 라이브러리 설치
+        pip install pandas openpyxl pyinstaller 
 
     - name: Build EXE
       run: |
-        pyinstaller --onefile --noconsole --name "ExcelCSVTool" Excel_CSV_Tool.py[cite: 1]
+        pyinstaller --onefile --noconsole --name "ExcelCSVTool" Excel_CSV_Tool.py
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: ExcelCSVTool-EXE
-        path: dist/ExcelCSVTool_${{ github.run_number }}.exe
+        # path는 pyinstaller의 --name 옵션으로 지정한 파일명과 일치
+        path: dist/ExcelCSVTool.exe
