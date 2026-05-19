@@ -1,7 +1,14 @@
 name: Build Windows EXE
 
-on: [push] 
-
+on:  
+  push:                # 커밋 후 원격 저장소에 반영되는 이벤트를 의미 (필수)
+    branches:
+      - main
+    paths:
+      - '**'           # 1. 일단 전체 경로를 포함
+      - '!**.md'       # 2. 모든 .md 파일 제외
+      - '!docs/**'     # 3. docs 폴더 하위 제외
+      - '**.{png, svg, bmp, gif, jpg}'
 jobs:
   build:
     runs-on: windows-latest 
